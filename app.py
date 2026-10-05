@@ -1,15 +1,3 @@
-#!/usr/bin/env python3
-"""Ferramenta geral para projeto de controladores PI/PD/PID via condicao de polo dominante
-
-Agora com saída LaTeX opcional, para visualização padronizada das equações.
-
-Uso rápido:
-- Passe output_mode="latex" em design_controller(...) e discretize_controller(...)
-  para obter blocos \\LaTeX. No modo "text" (padrão) a saída continua como antes.
-- Opcionalmente, informe report_file="relatorio.tex" para salvar um arquivo com todo
-  o relatório matemático (cabeçalho LaTeX incluso).
-"""
-
 from __future__ import annotations
 
 import cmath
@@ -42,9 +30,8 @@ def format_signed_number(value: float, precision: int = 5) -> str:
     return "+" + core
 
 
-# ======================================================
+
 # Reporter: controla saída em texto ou em LaTeX
-# ======================================================
 class Reporter:
     def __init__(
         self,
@@ -127,11 +114,7 @@ class Reporter:
     def dumps(self) -> str:
         return "\n".join(self.lines)
 
-
-# ======================================================
 # TransferFunction e utilitários
-# ======================================================
-
 def as_array(data: ArrayLike) -> np.ndarray:
     return np.array(list(data), dtype=float)
 
@@ -422,7 +405,6 @@ class TransferFunction:
 
 
 # ===== Helper functions =====
-
 def poly_add(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     la, lb = len(a), len(b)
     if la < lb:
@@ -577,7 +559,6 @@ def gain_from_magnitude(
 
 
 # ===== Discretizacao =====
-
 def _rational_poly_eval(coeffs: np.ndarray, s_num: np.ndarray, s_den: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """Avalia um polinomio em s substituindo s -> s_num/s_den.
 
@@ -688,7 +669,6 @@ def discrete_from_continuous(
     }
     return Nc_norm, Dc_norm, steps
 
-
 def difference_equation_latex(num: np.ndarray, den: np.ndarray) -> str:
     """Gera um bloco LaTeX (align) para a equação de diferenças padrão."""
     b = num
@@ -752,7 +732,6 @@ def print_difference_equation(rep: Reporter, num: np.ndarray, den: np.ndarray) -
 
 
 # ===== Construcao do controlador =====
-
 @dataclass
 class ControllerDesignResult:
     plant: TransferFunction
@@ -1073,7 +1052,6 @@ def design_controller(
         report=rep.dumps(),
     )
 
-
 def discretize_controller(
     result: ControllerDesignResult,
     T_s: float,
@@ -1228,10 +1206,7 @@ def discretize_controller(
     rep.flush()
     return Nc, Dc, rep.dumps()
 
-
-# ======================================================
 # INTERFACE STREAMLIT — DESENVOLVIMENTO PASSO A PASSO
-# ======================================================
 import streamlit as st
 import matplotlib.pyplot as plt
 import re
@@ -1334,9 +1309,7 @@ def render_design_latex(result, G, H, controller_type, spec_data):
     ctrl_poles = list(result.controller_poles)
     ctrl_zeros = list(result.controller_zeros)
 
-    # --------------------------------------------------
     # PASSO 1
-    # --------------------------------------------------
     st.markdown("## 1. Especificações → polos dominantes")
 
     if spec_data["mode"] == "Mp_ts":
@@ -1384,9 +1357,7 @@ def render_design_latex(result, G, H, controller_type, spec_data):
 
     st.markdown("---")
 
-    # --------------------------------------------------
     # PASSO 2
-    # --------------------------------------------------
     st.markdown("## 2. Funções de transferência e estrutura do controlador")
     c1, c2 = st.columns(2)
     with c1:
@@ -1409,9 +1380,7 @@ def render_design_latex(result, G, H, controller_type, spec_data):
 
     st.markdown("---")
 
-    # --------------------------------------------------
     # PASSO 3
-    # --------------------------------------------------
     st.markdown("## 3. Condição de ângulo")
     st.markdown("Para que $s_d$ pertença ao lugar das raízes, deve valer:")
     st.latex(r"\angle L(s_d)=(2k+1)180^\circ")
@@ -1498,9 +1467,7 @@ def render_design_latex(result, G, H, controller_type, spec_data):
 
     st.markdown("---")
 
-    # --------------------------------------------------
     # PASSO 4
-    # --------------------------------------------------
     st.markdown("## 4. Condição de magnitude → cálculo de K")
     st.markdown("No polo desejado, impomos $|L(s_d)|=1$:")
     st.latex(r"|K|\frac{\prod_i|s_d-z_i|}{\prod_j|s_d-p_j|}=1")
@@ -1542,9 +1509,7 @@ def render_design_latex(result, G, H, controller_type, spec_data):
 
     st.markdown("---")
 
-    # --------------------------------------------------
     # PASSO 5
-    # --------------------------------------------------
     st.markdown("## 5. Controlador contínuo e verificação")
     st.latex(rf"G_c(s)={tf_latex(result.controller)}")
 
@@ -1659,11 +1624,7 @@ def render_discretization_steps(result, T_s, method, target):
 
     return Nc, Dc
 
-
-# ======================================================
 # SIDEBAR
-# ======================================================
-
 st.title("Projeto de Controladores PI / PD / PID")
 st.caption("Desenvolvimento completo do projeto com fórmulas em LaTeX.")
 
@@ -1735,10 +1696,7 @@ with st.sidebar:
     st.divider()
     run = st.button("Projetar controlador", type="primary", use_container_width=True)
 
-# ======================================================
 # EXECUÇÃO
-# ======================================================
-
 if run:
     try:
         G = TransferFunction.from_coeffs(
@@ -1835,10 +1793,7 @@ with m3:
 with m4:
     st.metric("Kd", "—" if kd is None else format_number(kd))
 
-# ======================================================
 # ABAS
-# ======================================================
-
 tab_dev, tab_map, tab_disc, tab_report = st.tabs(
     ["📚 Desenvolvimento passo a passo", "📍 Polos e zeros", "🔢 Discretização", "📄 Relatório"]
 )
