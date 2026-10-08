@@ -88,7 +88,6 @@ class Reporter:
                 self.lines.append("\\[" + content + "\\]")
             self.lines.append(r"\smallskip")
         else:
-            # No modo texto, mostramos a versão com sintaxe LaTeX inline
             self.lines.append(content)
 
     def block(self, content: str) -> None:
@@ -287,28 +286,28 @@ def detail_open_loop_development(
         if controller_type == "pd":
             rep.block(
                 latex_align(
-                    r"G_c(s) = K_c (s + z_c)",
-                    r"L(s) = G_c(s) L_0(s) = K_c (s + z_c) \dfrac{N_{L_0}(s)}{D_{L_0}(s)}",
-                    r"Z(L) = Z(L_0) \cup \{-z_c\},\quad P(L) = P(L_0)",
-                    r"1 + L(s) = 0 \Rightarrow D_{L_0}(s) + K_c (s + z_c) N_{L_0}(s) = 0"
+                    r"G_c(s) = K_c (s - z_c)",
+                    r"L(s) = G_c(s) L_0(s) = K_c (s - z_c) \dfrac{N_{L_0}(s)}{D_{L_0}(s)}",
+                    r"Z(L) = Z(L_0) \cup \{z_c\},\quad P(L) = P(L_0)",
+                    r"1 + L(s) = 0 \Rightarrow D_{L_0}(s) + K_c (s - z_c) N_{L_0}(s) = 0"
                 )
             )
         elif controller_type == "pi":
             rep.block(
                 latex_align(
-                    r"G_c(s) = K_c \dfrac{s + z_c}{s}",
-                    r"L(s) = K_c \dfrac{s + z_c}{s} \dfrac{N_{L_0}(s)}{D_{L_0}(s)}",
-                    r"Z(L) = Z(L_0) \cup \{-z_c\},\quad P(L) = P(L_0) \cup \{0\}",
-                    r"1 + L(s) = 0 \Rightarrow s D_{L_0}(s) + K_c (s + z_c) N_{L_0}(s) = 0"
+                    r"G_c(s) = K_c \dfrac{s - z_c}{s}",
+                    r"L(s) = K_c \dfrac{s - z_c}{s} \dfrac{N_{L_0}(s)}{D_{L_0}(s)}",
+                    r"Z(L) = Z(L_0) \cup \{z_c\},\quad P(L) = P(L_0) \cup \{0\}",
+                    r"1 + L(s) = 0 \Rightarrow s D_{L_0}(s) + K_c (s - z_c) N_{L_0}(s) = 0"
                 )
             )
         elif controller_type == "pid":
             rep.block(
                 latex_align(
-                    r"G_c(s) = K_c \dfrac{(s + z_1)(s + z_2)}{s}",
-                    r"L(s) = K_c \dfrac{(s + z_1)(s + z_2)}{s} \dfrac{N_{L_0}(s)}{D_{L_0}(s)}",
-                    r"Z(L) = Z(L_0) \cup \{-z_1, -z_2\},\quad P(L) = P(L_0) \cup \{0\}",
-                    r"1 + L(s) = 0 \Rightarrow s D_{L_0}(s) + K_c (s + z_1)(s + z_2) N_{L_0}(s) = 0"
+                    r"G_c(s) = K_c \dfrac{(s - z_1)(s - z_2)}{s}",
+                    r"L(s) = K_c \dfrac{(s - z_1)(s - z_2)}{s} \dfrac{N_{L_0}(s)}{D_{L_0}(s)}",
+                    r"Z(L) = Z(L_0) \cup \{z_1, z_2\},\quad P(L) = P(L_0) \cup \{0\}",
+                    r"1 + L(s) = 0 \Rightarrow s D_{L_0}(s) + K_c (s - z_1)(s - z_2) N_{L_0}(s) = 0"
                 )
             )
         else:
@@ -321,23 +320,23 @@ def detail_open_loop_development(
         rep.text(f"  Z(L0) = {format_complex_list_text(plant_zeros)}")
         rep.text(f"  P(L0) = {format_complex_list_text(plant_poles)}")
         if controller_type == "pd":
-            rep.text("  Gc(s) = Kc*(s + zc)")
-            rep.text("  L(s) = Kc*(s + zc)*L0(s)")
-            rep.text("  Z(L) = Z(L0) U {-zc}")
+            rep.text("  Gc(s) = Kc*(s - zc)")
+            rep.text("  L(s) = Kc*(s - zc)*L0(s)")
+            rep.text("  Z(L) = Z(L0) U {zc}")
             rep.text("  P(L) = P(L0)")
-            rep.text("  1 + L(s) = 0 -> D_L0(s) + Kc*(s + zc)*N_L0(s) = 0")
+            rep.text("  1 + L(s) = 0 -> D_L0(s) + Kc*(s - zc)*N_L0(s) = 0")
         elif controller_type == "pi":
-            rep.text("  Gc(s) = Kc*(s + zc)/s")
-            rep.text("  L(s) = Kc*(s + zc)/s * L0(s)")
-            rep.text("  Z(L) = Z(L0) U {-zc}")
+            rep.text("  Gc(s) = Kc*(s - zc)/s")
+            rep.text("  L(s) = Kc*(s - zc)/s * L0(s)")
+            rep.text("  Z(L) = Z(L0) U {zc}")
             rep.text("  P(L) = P(L0) U {0}")
-            rep.text("  1 + L(s) = 0 -> s*D_L0(s) + Kc*(s + zc)*N_L0(s) = 0")
+            rep.text("  1 + L(s) = 0 -> s*D_L0(s) + Kc*(s - zc)*N_L0(s) = 0")
         elif controller_type == "pid":
-            rep.text("  Gc(s) = Kc*(s + z1)*(s + z2)/s")
-            rep.text("  L(s) = Kc*(s + z1)*(s + z2)/s * L0(s)")
-            rep.text("  Z(L) = Z(L0) U {-z1, -z2}")
+            rep.text("  Gc(s) = Kc*(s - z1)*(s - z2)/s")
+            rep.text("  L(s) = Kc*(s - z1)*(s - z2)/s * L0(s)")
+            rep.text("  Z(L) = Z(L0) U {z1, z2}")
             rep.text("  P(L) = P(L0) U {0}")
-            rep.text("  1 + L(s) = 0 -> s*D_L0(s) + Kc*(s + z1)*(s + z2)*N_L0(s) = 0")
+            rep.text("  1 + L(s) = 0 -> s*D_L0(s) + Kc*(s - z1)*(s - z2)*N_L0(s) = 0")
         else:
             rep.text("  Tipo de controlador nao listado para desenvolvimento detalhado")
 
@@ -915,11 +914,23 @@ def design_controller(
                     r"x_i = \sigma + \dfrac{\omega_d}{\tan\phi_i},\; i=1,2",
                     fr"x_1 = {format_number(sigma)} + \dfrac{{\omega_d}}{{\tan({format_number(phi1)}^\circ)}} = {format_number(z1)}",
                     fr"x_2 = {format_number(sigma)} + \dfrac{{\omega_d}}{{\tan({format_number(phi2)}^\circ)}} = {format_number(z2)}",
-                    fr"z_{c1} = -x_1 = {format_complex_latex(-z1)},\quad z_{c2} = -x_2 = {format_complex_latex(-z2)}"
+                    fr"z_1 = -x_1 = {format_complex_latex(-z1)},\quad z_2 = -x_2 = {format_complex_latex(-z2)}"
                 )
             )
     else:
         raise ValueError("controller_type deve ser 'pi', 'pd' ou 'pid'.")
+
+    final_zero_terms, final_pole_terms, final_angle_raw, final_angle_norm = angle_contributions(
+        sd, plant_zeros + ctrl_zeros, plant_poles + ctrl_poles
+    )
+    rep.title("2.1) Verificação da condição de ângulo")
+    rep.block(
+        latex_align(
+            fr"\angle L(s_d)=\sum\theta_z-\sum\theta_p",
+            fr"\angle L(s_d)={format_number(final_angle_raw)}^\circ",
+            fr"\angle L(s_d)_{{norm}}={format_number(final_angle_norm)}^\circ"
+        )
+    )
 
     magnitude_num = abs(plant.gain * sensor.gain)
     numerator_distances: List[Tuple[complex, float]] = []
@@ -1213,7 +1224,7 @@ import re
 
 st.set_page_config(
     page_title="Projeto de Controladores PI / PD / PID",
-    page_icon="🎛️",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -1357,7 +1368,6 @@ def render_design_latex(result, G, H, controller_type, spec_data):
 
     st.markdown("---")
 
-    # PASSO 2
     st.markdown("## 2. Funções de transferência e estrutura do controlador")
     c1, c2 = st.columns(2)
     with c1:
@@ -1372,11 +1382,11 @@ def render_design_latex(result, G, H, controller_type, spec_data):
 
     st.markdown(f"Para um controlador **{controller_type}**:")
     if controller_type == "PD":
-        st.latex(r"G_c(s)=K(s+z_c)")
+        st.latex(r"G_c(s)=K(s-z_c)")
     elif controller_type == "PI":
-        st.latex(r"G_c(s)=K\frac{s+z_c}{s}")
+        st.latex(r"G_c(s)=K\frac{s-z_c}{s}")
     else:
-        st.latex(r"G_c(s)=K\frac{(s+z_1)(s+z_2)}{s}")
+        st.latex(r"G_c(s)=K\frac{(s-z_1)(s-z_2)}{s}")
 
     st.markdown("---")
 
@@ -1385,85 +1395,123 @@ def render_design_latex(result, G, H, controller_type, spec_data):
     st.markdown("Para que $s_d$ pertença ao lugar das raízes, deve valer:")
     st.latex(r"\angle L(s_d)=(2k+1)180^\circ")
 
-    zero_terms, pole_terms, angle_sum_raw, angle_sum_norm = angle_contributions(
-        sd, plant_zeros, ctrl_poles
+    st.markdown(
+        "Primeiro calculamos as contribuições dos elementos conhecidos. "
+        "O(s) zero(s) do controlador ainda é(são) incógnita(s)."
     )
-    raw_def, acute_def = angle_deficit(sd, plant_zeros, ctrl_poles)
+
+    base_poles = plant_poles + ctrl_poles
+    zero_terms, pole_terms, angle_sum_raw, angle_sum_norm = angle_contributions(
+        sd, plant_zeros, base_poles
+    )
+    raw_def, required_zero_angle = angle_deficit(
+        sd, plant_zeros, base_poles
+    )
 
     if plant_zeros:
         st.markdown("**Contribuição dos zeros da planta/sensor:**")
         for i, (z, ang) in enumerate(zero_terms, 1):
             st.latex(
-                rf"\angle(s_d-z_{i}) = \angle\left({format_complex_latex(sd)}"
-                rf"-({format_complex_latex(z)})\right) = {format_number(ang)}^\circ"
+                rf"\theta_{{z_{i}}}=\angle(s_d-z_{i})"
+                rf"=\angle\left({format_complex_latex(sd)}"
+                rf"-({format_complex_latex(z)})\right)"
+                rf"={format_number(ang)}^\circ"
             )
     else:
-        st.write("A planta não possui zeros finitos.")
+        st.write("A planta/sensor não possui zeros finitos.")
 
     if pole_terms:
         st.markdown("**Contribuição dos polos:**")
         for i, (p, ang) in enumerate(pole_terms, 1):
             st.latex(
-                rf"\angle(s_d-p_{i}) = \angle\left({format_complex_latex(sd)}"
-                rf"-({format_complex_latex(p)})\right) = {format_number(ang)}^\circ"
+                rf"\theta_{{p_{i}}}=\angle(s_d-p_{i})"
+                rf"=\angle\left({format_complex_latex(sd)}"
+                rf"-({format_complex_latex(p)})\right)"
+                rf"={format_number(ang)}^\circ"
             )
 
+    st.markdown("**Soma das contribuições conhecidas:**")
     st.latex(
-        rf"\sum\angle = {format_number(angle_sum_raw)}^\circ"
-        rf"\quad\Rightarrow\quad"
-        rf"\sum\angle_{{norm}} = {format_number(angle_sum_norm)}^\circ"
+        rf"\sum\theta_{{conhecidos}}=\sum\theta_z-\sum\theta_p"
+        rf"={format_number(angle_sum_raw)}^\circ"
     )
     st.latex(
-        rf"\phi = 180^\circ-\left({format_number(angle_sum_norm)}^\circ\right)"
-        rf" = {format_number(raw_def)}^\circ"
+        rf"\sum\theta_{{conhecidos,norm}}={format_number(angle_sum_norm)}^\circ"
     )
-    st.latex(rf"\boxed{{|\phi| = {format_number(acute_def)}^\circ}}")
+
+    theta_zc = required_zero_angle
+
+    if controller_type in ("PD", "PI"):
+        st.markdown("**Condição de ângulo incluindo o zero do controlador:**")
+        st.latex(
+            r"\sum\theta_{z,\mathrm{planta}}+\theta_{z_c}-\sum\theta_p"
+            r"=(2k+1)180^\circ"
+        )
+        st.latex(
+            rf"\theta_{{z_c}}=180^\circ-\left({format_number(angle_sum_norm)}^\circ\right)"
+            rf"={format_number(theta_zc)}^\circ"
+        )
+        st.latex(rf"\boxed{{|\theta_{{z_c}}|={format_number(abs(theta_zc))}^\circ}}")
+
+    elif controller_type == "PID":
+        st.markdown("**Condição de ângulo incluindo os zeros do controlador:**")
+        st.latex(
+            r"\sum\theta_{z,\mathrm{planta}}+\theta_{z_1}+\theta_{z_2}-\sum\theta_p"
+            r"=(2k+1)180^\circ"
+        )
+        st.latex(
+            rf"\theta_{{z_1}}+\theta_{{z_2}}=180^\circ-\left({format_number(angle_sum_norm)}^\circ\right)"
+            rf"={format_number(theta_zc)}^\circ"
+        )
+        st.latex(rf"\boxed{{|\theta_{{z_1}}+\theta_{{z_2}}|={format_number(abs(theta_zc))}^\circ}}")
 
     st.markdown("### Localização dos zeros do controlador")
 
     if controller_type in ("PD", "PI") and ctrl_zeros:
         zc = ctrl_zeros[0]
-        x = -zc.real
+        st.latex(r"\tan(\theta_{z_c})=\frac{\omega_d}{\operatorname{Re}(s_d)-z_c}")
+        st.latex(r"z_c=\operatorname{Re}(s_d)-\frac{\omega_d}{\tan(\theta_{z_c})}")
         st.latex(
-            r"\tan(\phi)=\frac{\omega_d}{x-\sigma}"
+            rf"z_c={format_number(sd.real)}-\frac{{{format_number(wd)}}}"
+            rf"{{\tan({format_number(theta_zc)}^\circ)}}"
+            rf"={format_number(zc.real)}"
         )
-        st.latex(
-            rf"x=\sigma+\frac{{\omega_d}}{{\tan(\phi)}}"
-            rf" = {format_number(sigma)}"
-            rf"+\frac{{{format_number(wd)}}}{{\tan({format_number(acute_def)}^\circ)}}"
-            rf" = {format_number(x)}"
-        )
-        st.latex(rf"\boxed{{z_c=-x={format_complex_latex(zc)}}}")
+        st.latex(rf"\boxed{{z_c={format_complex_latex(zc)}}}")
 
     elif controller_type == "PID" and len(ctrl_zeros) >= 2:
         if abs(ctrl_zeros[0] - ctrl_zeros[1]) < 1e-9:
-            phi_each = acute_def / 2.0
-            x = -ctrl_zeros[0].real
-            st.latex(r"\phi_1=\phi_2=\frac{\phi}{2}")
-            st.latex(rf"\phi_1=\phi_2={format_number(phi_each)}^\circ")
+            phi_each = theta_zc / 2.0
+            zc = ctrl_zeros[0]
+            st.latex(r"\theta_{z_1}=\theta_{z_2}=\frac{\theta_{z_1}+\theta_{z_2}}{2}")
+            st.latex(rf"\theta_{{z_1}}=\theta_{{z_2}}={format_number(phi_each)}^\circ")
             st.latex(
-                rf"x=\sigma+\frac{{\omega_d}}{{\tan(\phi/2)}}"
-                rf"={format_number(x)}"
+                rf"z_1=z_2={format_number(sd.real)}-\frac{{{format_number(wd)}}}"
+                rf"{{\tan({format_number(phi_each)}^\circ)}}={format_number(zc.real)}"
             )
-            st.latex(
-                rf"\boxed{{z_1=z_2={format_complex_latex(ctrl_zeros[0])}}}"
-            )
+            st.latex(rf"\boxed{{z_1=z_2={format_complex_latex(zc)}}}")
         else:
-            phi1 = math.degrees(math.atan2(
-                wd, (-ctrl_zeros[0].real) - sigma
-            ))
-            phi2 = math.degrees(math.atan2(
-                wd, (-ctrl_zeros[1].real) - sigma
-            ))
-            st.latex(rf"\phi_1\approx{format_number(phi1)}^\circ,\quad "
-                     rf"\phi_2\approx{format_number(phi2)}^\circ")
             for i, zc in enumerate(ctrl_zeros, 1):
-                x = -zc.real
-                st.latex(
-                    rf"x_{i}=\sigma+\frac{{\omega_d}}{{\tan(\phi_i)}}"
-                    rf"={format_number(x)}"
-                )
-                st.latex(rf"z_{i}={format_complex_latex(zc)}")
+                phi_i = math.degrees(math.atan2(wd, sd.real - zc.real))
+                st.latex(rf"\theta_{{z_{i}}}={format_number(phi_i)}^\circ")
+                st.latex(rf"\boxed{{z_{i}={format_complex_latex(zc)}}}")
+
+    if ctrl_zeros or ctrl_poles:
+        final_zeros = plant_zeros + ctrl_zeros
+        final_poles = plant_poles + ctrl_poles
+        _, _, final_angle_raw, final_angle_norm = angle_contributions(
+            sd, final_zeros, final_poles
+        )
+        st.markdown("### Verificação da condição de ângulo")
+        st.latex(r"\angle L(s_d)=\sum\theta_z-\sum\theta_p")
+        st.latex(
+            rf"\angle L(s_d)={format_number(final_angle_raw)}^\circ"
+            rf"\quad\Rightarrow\quad"
+            rf"\angle L(s_d)_{{norm}}={format_number(final_angle_norm)}^\circ"
+        )
+        if abs(abs(final_angle_norm) - 180.0) < 1e-3:
+            st.success("Condição de ângulo satisfeita: o polo desejado pertence ao lugar das raízes.")
+        else:
+            st.warning("A condição de ângulo não foi satisfeita dentro da tolerância numérica.")
 
     st.markdown("---")
 
@@ -1762,7 +1810,7 @@ if st.session_state.get("error"):
 result = st.session_state.get("result")
 
 if result is None:
-    st.info("Configure o sistema e clique em **🚀 Projetar controlador**.")
+    st.info("Configure o sistema e clique em **Projetar controlador**.")
     st.markdown("### O que será mostrado")
     cols = st.columns(6)
     for col, n, title in zip(
@@ -1795,7 +1843,7 @@ with m4:
 
 # ABAS
 tab_dev, tab_map, tab_disc, tab_report = st.tabs(
-    ["📚 Desenvolvimento passo a passo", "📍 Polos e zeros", "🔢 Discretização", "📄 Relatório"]
+    ["Desenvolvimento passo a passo", "Polos e zeros", "Discretização", "Relatório"]
 )
 
 with tab_dev:
