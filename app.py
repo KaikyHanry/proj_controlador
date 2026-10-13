@@ -1638,7 +1638,9 @@ def render_discretization_steps(result, T_s, method, target):
 
     Nc_reduced = np.asarray(steps["Nc_reduced"], dtype=float)
     Dc_reduced = np.asarray(steps["Dc_reduced"], dtype=float)
-    if not (np.allclose(Nc_raw, Nc_reduced) and np.allclose(Dc_raw, Dc_reduced)):
+    same_nc = (Nc_raw.shape == Nc_reduced.shape and np.allclose(Nc_raw, Nc_reduced))
+    same_dc = (Dc_raw.shape == Dc_reduced.shape and np.allclose(Dc_raw, Dc_reduced))
+    if not (same_nc and same_dc):
         st.markdown("### 6.3 Cancelamento de fatores comuns")
         st.latex(rf"N_c^{{red}}(z)={poly_to_latex(Nc_reduced,'z')}")
         st.latex(rf"D_c^{{red}}(z)={poly_to_latex(Dc_reduced,'z')}")
