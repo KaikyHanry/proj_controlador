@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
+import sympy as sp
 
 np.set_printoptions(precision=5, suppress=True)
 
@@ -1674,8 +1675,54 @@ def render_discretization_steps(result, T_s, method, target):
 
     return Nc, Dc
 
+def solve_custom_controller_parameters(G, H, num_expr_text, den_expr_text, parameter_text, desired_pole):
+    """Resolve parâmetros simbólicos de Gc usando a condição característica no polo desejado."""
+    symbols_map = {name.strip(): sp.Symbol(name.strip(), real=True)
+                   for name in parameter_text.replace(';', ',').split(',') if name.strip()}
+    if not symbols_map:
+        raise ValueError("Informe ao menos um parâmetro desconhecido, por exemplo: a, b.")
+
+    def parse_symbolic_coeffs(text):
+        parts = [x.strip() for x in text.replace(';', ',').split(',') if x.strip()]
+        if not parts:
+            raise ValueError("Informe os coeficientes do controlador.")
+        return [sp.sympify(part, locals=symbols_map) for part in parts]
+
+    n_c = parse_symbolic_coeffs(num_expr_text)
+    d_c = parse_symbolic_coeffs(den_expr_text)
+    if sp.simplify(d_c[0]) == 0:
+        raise ValueError("O primeiro coeficiente do denominador não pode ser zero.")
+
+    # Polinômios da planta e do sensor multiplicados em série.
+    n_gh = np.polymul(G.num, H.num)
+    d_gh = np.polymul(G.den, H.den)
+    # denominador de L = D_GH * D_c; numerador de L = N_GH * N_c
+    s_var = sp.Symbol('s')
+    n_expr = sp.Poly.from_list(list(n_gh), gens=s_var).as_expr() * sp.Poly.from_list(n_c, gens=s_var).as_expr()
+    d_expr = sp.Poly.from_list(list(d_gh), gens=s_var).as_expr() * sp.Poly.from_list(d_c, gens=s_var).as_expr()
+    char_expr = sp.expand(d_expr + n_expr)
+    val = sp.expand(char_expr.subs(s_var, complex(desired_pole)))
+    # separar as partes real e imaginária com parâmetros reais
+    real_eq = sp.re(val)
+    imag_eq = sp.im(val)
+    unknowns = list(symbols_map.values())
+    equations = [sp.Eq(real_eq, 0), sp.Eq(imag_eq, 0)]
+    solutions = sp.solve(equations, unknowns, dict=True)
+    if not solutions:
+        raise ValueError("Não foi possível determinar os parâmetros com esse polo. Verifique a estrutura e as especificações.")
+    sol = next((item for item in solutions if all(k in item for k in unknowns)), solutions[0])
+    values = {str(k): float(sp.N(v)) for k, v in sol.items() if k in unknowns and not sp.im(v)}
+    if len(values) != len(unknowns):
+        raise ValueError("A solução não é única/real ou há parâmetros demais para as condições fornecidas.")
+
+    def eval_coeffs(coeffs):
+        out = [float(sp.N(c.subs({symbols_map[k]: v for k, v in values.items()}))) for c in coeffs]
+        return np.asarray(out, dtype=float)
+    return eval_coeffs(n_c), eval_coeffs(d_c), values
+
+
 # SIDEBAR
-st.title("Projeto de Controladores PI / PD / PID")
+st.title("Projeto de Controladores PI / PD / PID / Personalizado")
 st.caption("Desenvolvimento completo do projeto com fórmulas em LaTeX.")
 
 with st.sidebar:
@@ -1689,7 +1736,18 @@ with st.sidebar:
 
     st.divider()
     st.subheader("2. Controlador")
-    controller_type = st.selectbox("Tipo", ["PD", "PI", "PID"])
+    controller_type = st.selectbox("Tipo", ["PD", "PI", "PID", "Personalizado"])
+    custom_num_text = "1"
+    custom_den_text = "1, 1"
+    custom_mode = "Informar Gc(s)"
+    custom_parameters_text = "a, b"
+    if controller_type == "Personalizado":
+        custom_mode = st.radio("Operação", ["Informar Gc(s)", "Calcular parâmetros a partir dos polos"])
+        st.caption("Coeficientes em ordem decrescente das potências de s. Para síntese, use expressões simbólicas nos coeficientes.")
+        custom_num_text = st.text_input("Coeficientes do numerador Gc(s)", value="1" if custom_mode == "Informar Gc(s)" else "a")
+        custom_den_text = st.text_input("Coeficientes do denominador Gc(s)", value="1, 1" if custom_mode == "Informar Gc(s)" else "1, b")
+        if custom_mode == "Calcular parâmetros a partir dos polos":
+            custom_parameters_text = st.text_input("Parâmetros desconhecidos", value="a, b")
 
     st.divider()
     st.subheader("3. Especificações")
@@ -1758,7 +1816,50 @@ if run:
             parse_coefficients(sensor_den_text),
         )
 
-        if spec_mode == "Mp (%) e tempo de acomodação":
+        if controller_type == "Personalizado":
+            # O controlador personalizado é tratado como uma função de transferência arbitrária.
+            if spec_mode == "Mp (%) e tempo de acomodação":
+                sd, sd_conj, _, _ = desired_poles_from_specs(
+                    "mp_ts", mp_percent=mp, ts=ts, ts_criterion=settling_criterion
+                )
+            elif spec_mode == "ζ e ωn":
+                sd, sd_conj, _, _ = desired_poles_from_specs("zeta_wn", zeta=zeta, wn=wn)
+            else:
+                sd, sd_conj, _, _ = desired_poles_from_specs(
+                    "poles", explicit_poles=[complex(pole_real, pole_imag), complex(pole_real, -pole_imag)]
+                )
+            if custom_mode == "Calcular parâmetros a partir dos polos":
+                custom_num, custom_den, solved_parameters = solve_custom_controller_parameters(
+                    G, H, custom_num_text, custom_den_text, custom_parameters_text, sd
+                )
+            else:
+                custom_num = parse_coefficients(custom_num_text)
+                custom_den = parse_coefficients(custom_den_text)
+                solved_parameters = {}
+            controller_tf = TransferFunction.from_coeffs(custom_num, custom_den)
+            plant_total = G.series(H)
+            open_loop_tf = controller_tf.series(plant_total)
+            char_poly = poly_add(open_loop_tf.den, open_loop_tf.num)
+            closed_poles = np.roots(char_poly)
+            report = (
+                "CONTROLADOR PERSONALIZADO\n"
+                f"Gc(s) = ({controller_tf._poly_to_string(controller_tf.num, 's')}) / "
+                f"({controller_tf._poly_to_string(controller_tf.den, 's')})\n"
+                f"Polos desejados: {sd}, {sd_conj}\n"
+                f"Polos calculados em malha fechada: {closed_poles}\n"
+                + (f"Parâmetros calculados: {solved_parameters}\n" if solved_parameters else "")
+                + ("Os parâmetros foram calculados pela condição característica no polo desejado." if solved_parameters else
+                   "Observação: neste modo, o controlador é informado pelo usuário; o app calcula a malha fechada, mas não ajusta automaticamente seus coeficientes.")
+            )
+            result = ControllerDesignResult(
+                plant=G, sensor=H, plant_total=plant_total, controller=controller_tf,
+                open_loop=open_loop_tf, closed_loop_poles=closed_poles,
+                desired_poles=(sd, sd_conj), gains=(None, None, None),
+                controller_zeros=list(controller_tf.zeros),
+                controller_poles=list(controller_tf.poles),
+                gain_scalar=float(controller_tf.gain), report=report,
+            )
+        elif spec_mode == "Mp (%) e tempo de acomodação":
             result = design_controller(
                 plant=G, sensor=H,
                 controller_type=controller_type.lower(),
@@ -1795,6 +1896,10 @@ if run:
             "zeta": zeta, "wn": wn,
             "pole_real": pole_real, "pole_imag": pole_imag,
             "controller_type": controller_type,
+            "custom_num_text": custom_num_text,
+            "custom_den_text": custom_den_text,
+            "custom_mode": custom_mode,
+            "custom_parameters_text": custom_parameters_text,
             "discretize": discretize,
             "sample_time": sample_time,
             "method": discretization_method,
@@ -1849,15 +1954,36 @@ tab_dev, tab_map, tab_disc, tab_report = st.tabs(
 )
 
 with tab_dev:
-    render_design_latex(
-        result, G, H, data["controller_type"],
-        {
-            "mode": data["mode"],
-            "mp": data["mp"],
-            "ts": data["ts"],
-            "criterion": data["criterion"],
-        },
-    )
+    if data["controller_type"] == "Personalizado":
+        st.markdown("## Controlador personalizado")
+        st.info("Modo personalizado: o controlador foi informado diretamente ou seus parâmetros foram calculados a partir do polo desejado, conforme a opção selecionada.")
+        if data.get("custom_mode") == "Calcular parâmetros a partir dos polos":
+            st.markdown("### Parâmetros calculados")
+            st.write(result.report.split("Parâmetros calculados:", 1)[1].splitlines()[0] if "Parâmetros calculados:" in result.report else "Consulte o relatório.")
+        st.markdown("### Funções de transferência")
+        st.latex(rf"G(s)={tf_latex(G)}")
+        st.latex(rf"H(s)={tf_latex(H)}")
+        st.latex(rf"G_c(s)={tf_latex(result.controller)}")
+        st.markdown("### Malha aberta e equação característica")
+        st.latex(rf"L(s)=G(s)H(s)G_c(s)={tf_latex(result.open_loop)}")
+        char_poly = poly_add(result.open_loop.den, result.open_loop.num)
+        st.latex(rf"\Delta(s)={poly_to_latex(char_poly)}=0")
+        st.markdown("### Polos desejados e polos calculados")
+        show_complex_list(result.desired_poles, "Polos desejados")
+        show_complex_list(result.closed_loop_poles, "Polos de malha fechada")
+        st.markdown("### Zeros e polos do controlador")
+        show_complex_list(result.controller_zeros, "Zeros")
+        show_complex_list(result.controller_poles, "Polos")
+    else:
+        render_design_latex(
+            result, G, H, data["controller_type"],
+            {
+                "mode": data["mode"],
+                "mp": data["mp"],
+                "ts": data["ts"],
+                "criterion": data["criterion"],
+            },
+        )
 
 with tab_map:
     desired = np.asarray(result.desired_poles, dtype=complex)
